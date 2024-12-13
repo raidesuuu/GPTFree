@@ -1,13 +1,12 @@
-import type { NextApiRequest, NextApiResponse } from "next";
+import { NextRequest } from "next/server";
 
 export const runtime = "edge";
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+export default async function handler(req: NextRequest) {
   if (req.method === "POST") {
     try {
+      const { model, messages } = await req.json();
+
       const response = await fetch(
         "https://api.voids.top/v1/chat/completions",
         {
@@ -17,8 +16,8 @@ export default async function handler(
             Authorization: `Bearer YOUR_API_KEY`, // Replace with your actual API key
           },
           body: JSON.stringify({
-            model: req.body.model, // Use the model specified in the request
-            messages: req.body.messages, // Pass the messages from the client
+            model: model, // Use the model specified in the request
+            messages: messages, // Pass the messages from the client
           }),
         }
       );
@@ -26,18 +25,35 @@ export default async function handler(
       if (!response.ok) {
         const a = await response.text();
         console.error(`Error fetching data: ${a}`);
-        res.status(500).json({ error: "Server Down" });
+        return new Response(JSON.stringify({ error: "Server Down" }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        });
         return;
       }
 
       const data = await response.json();
-      res.status(200).json(data);
+      return new Response(JSON.stringify(data), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
     } catch (error) {
       console.error("Error fetching data:", error);
-      res.status(500).json({ error: "Internal Server Error" });
+      return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
     }
   } else {
-    res.setHeader("Allow", ["POST"]);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
+    return new Response(
+      JSON.stringify({ error: `Method ${req.method} Not Allowed` }),
+      {
+        status: 405,
+        headers: {
+          Allow: "POST",
+          "Content-Type": "application/json",
+        },
+      }
+    );
   }
 }
