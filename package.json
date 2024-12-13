@@ -6,13 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "pages:build": "pnpm next-on-pages",
-    "preview": "pnpm run pages:build && wrangler pages dev",
-    "deploy": "pnpm run pages:build && wrangler pages deploy"
+    "lint": "next lint"
   },
   "dependencies": {
-    "@cloudflare/next-on-pages-next-dev": "^0.0.1",
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -31,7 +27,6 @@
     "webpack": "^5.97.1"
   },
   "devDependencies": {
-    "@cloudflare/next-on-pages": "^1.13.7",
     "@tailwindcss/typography": "^0.5.15",
     "@types/node": "^22.10.1",
     "@types/react": "^19.0.1",
