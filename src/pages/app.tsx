@@ -28,6 +28,9 @@ const ChatApp: React.FC = () => {
 
   const [username, setUsername] = useState<string | null>(null);
   const [isFitPreferred, setIsFitPreferred] = useState(false);
+  const [systemPrompt, setSystemPrompt] = useState<string | undefined>(
+    undefined
+  );
 
   const [pastedImage, setPastedImage] = useState<string | null>(null);
 
@@ -244,10 +247,29 @@ const ChatApp: React.FC = () => {
       const bodyContent: any = {
         model,
         messages: [
-          {
-            role: "system",
-            content: "Supported vision on this model. please read images.",
-          },
+          ...(model.includes("o1")
+            ? []
+            : [
+                {
+                  role: "system",
+                  content: systemPrompt
+                    ? systemPrompt + " 最初には簡単なタイトルをつけてください。"
+                    : "最初には簡単なタイトルをつけてください。",
+                },
+              ]),
+          ...chatSessions[activeSession].messages.map((msg) => {
+            if (msg.startsWith("AI:")) {
+              return {
+                role: "assistant",
+                content: [{ type: "text", text: msg.substring(3) }],
+              };
+            } else {
+              return {
+                role: "user",
+                content: [{ type: "text", text: msg }],
+              };
+            }
+          }),
           {
             role: "user",
             content: [{ type: "text", text: message }],
@@ -268,6 +290,8 @@ const ChatApp: React.FC = () => {
         const aiMessage =
           responseData.choices[0]?.message.content ||
           "AI: エラーが発生しました。";
+        const titleMatch = aiMessage.match(/^(.+?)(?:\n|$)/);
+        const title = titleMatch ? titleMatch[1] : "新しいチャット";
 
         setChatSessions((prevSessions) => {
           if (!activeSession || !prevSessions[activeSession]) {
@@ -284,12 +308,35 @@ const ChatApp: React.FC = () => {
             [activeSession]: {
               ...prevSessions[activeSession],
               messages: updatedSession,
+              name: prevSessions[activeSession].name.includes("会話")
+                ? prevSessions[activeSession].name
+                : title.replace(/\[.*?\]\s*|#/g, ""),
             },
           };
           saveSessionsToLocalStorage(updatedSessions);
           return updatedSessions;
         });
       } else {
+        setChatSessions((prevSessions) => {
+          if (!activeSession || !prevSessions[activeSession]) {
+            console.error("Active session is invalid or undefined.");
+            return prevSessions;
+          }
+
+          const updatedSession = [
+            ...prevSessions[activeSession].messages,
+            `AI: ### エラーが発生しました。APIサーバーがダウンしているか、このモデルは現在オフラインです。`,
+          ];
+          const updatedSessions = {
+            ...prevSessions,
+            [activeSession]: {
+              ...prevSessions[activeSession],
+              messages: updatedSession,
+            },
+          };
+          saveSessionsToLocalStorage(updatedSessions);
+          return updatedSessions;
+        });
         console.error("Error sending message to server");
       }
 
@@ -648,17 +695,18 @@ const ChatApp: React.FC = () => {
 
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-zinc-400">
-                    請求
+                    システム プロンプト
                   </label>
 
-                  <p className="mb-2 mt-2">現在のクレジット: ∞ (10,000)</p>
+                  <p className="text-sm">
+                    o1では、システムプロンプトは無効になります。
+                  </p>
 
-                  <button
-                    className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-500 disabled:bg-blue-900 disabled:opacity-50 disabled:pointer-events-none"
-                    onClick={handleSaveSettings}
-                  >
-                    チャージ（無料）
-                  </button>
+                  <textarea
+                    className="w-full p-2 mt-1 text-white bg-zinc-700 rounded"
+                    value={systemPrompt}
+                    onChange={(e) => setSystemPrompt(e.target.value)}
+                  />
                 </div>
 
                 <div className="flex justify-end">
